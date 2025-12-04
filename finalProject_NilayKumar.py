@@ -10,6 +10,9 @@ MODEL    = os.getenv("MODEL_NAME", "bens_model")
 #algorithm I have in mind is to implement self-consistency, so multiple COTs are ran at the same time and then majority vote on an answer. Ideally seems to be the 
 #best way to get an accurate answer, though may not be very fast.
 
+#result, increasing maximum tokens increased model accuracy yes, but runtime started to take far too long, multiple hours
+#to create the dev data answers
+
 def call_model_chat_completions(prompt: str,
                                 system: str = "You are a helpful assistant. Reply with only the final answer—no explanation.",
                                 model: str = MODEL,
@@ -31,7 +34,7 @@ def call_model_chat_completions(prompt: str,
             {"role": "user",   "content": prompt}
         ],
         "temperature": temperature,
-        "max_tokens": 512,
+        "max_tokens": 128,
     }
 
     try:
@@ -132,7 +135,9 @@ def extract_integer_final(text: str):
 #in the sense of taking the most common answer in the list, if all the answers are different, maybe I should keep running until I come across an answer that already
 #exists in the array and return that
 
-def SelfConsistency(question, attempts=5,temperature=0.7):
+#changed to 1 because it would genuinely take like 2 hours if i wanted to run all the dev data, meaning it would take 
+#12 hours if i wanted to run the test data, so this algorithm won't work
+def SelfConsistency(question, attempts=1,temperature=0.7):
     finalAnswers = []
     frequency = {}
     for i in range(attempts):
@@ -178,15 +183,20 @@ def DirectAnswer(question: str, temperature: float = 0.0) -> str:
 def solveQuestion(question: dict) -> str:
     text = question["input"]
     #classify the problem first
-    print("TEST1")
+    #print("TEST1")
     problemType = ClassifyQuestionType(text)
-    print("TEST")
+    #print("TEST")
 
     #based on that answer, route to appropriate inference time algorithm
     if problemType == "math":
         return SolveMath(text)
+    
+    #if it looks like MCQ, solve with MCQ solver
+    if MCQLikeQuestion(text):
+        answer = FewShotMC(text, temperature=0.0)
+        return answer
     #direct answer for now if it's not math, will work on other techniques
-    answer = DirectAnswer(text, temperature=0.0)
+    answer = DomainDirectAnswer(text, temperature=0.0)
     return str(answer)
 
 #the solver was taking too long so I decided to implement a function to determine whether problems are shorter or longer
@@ -207,3 +217,66 @@ def SolveMath(question: str) -> str:
     if answer is None:
         answer = DirectAnswer(question, temperature=0.0)
     return str(answer)
+
+
+#if I help detect multiple choice questions, then we can use few shot prompting to increase model accuracy for MCQ questions
+def MCQLikeQuestion(question: str) -> bool:
+    q = question.lower()
+
+    patterns = [" a.", " b.", " c.", " d.",
+                " a)", " b)", " c)", " d)",
+                "\na.", "\nb.", "\nc.", "\nd."]
+    
+    return any(p in q for p in patterns)
+
+#use few shot prompting for the mcq, to help MCQ accuracy
+def FewShotMC(question_text: str, temperature: float = 0.0) -> str:
+
+    system = (
+        "You answer questions using the patterns shown in the examples. "
+        "Reply with only the final answer (a single letter like A, B, C, or D, "
+        "or a short phrase), no explanation."
+    )
+
+    examples = """
+    Q: A student walks to school one morning and notices the grass is wet. Which process most likely caused the grass to be wet?
+        A. condensation  B. erosion  C. evaporation  D. precipitation
+    Answer: D
+
+    Q: Which part of the plant is mainly responsible for photosynthesis?
+        A. roots  B. stems  C. leaves  D. flowers
+    Answer: C
+
+    Q: Water turns into water vapor in which process?
+        A. freezing  B. melting  C. evaporation  D. condensation
+    Answer: C
+    """
+
+    prompt = f"""{examples}
+
+    Now answer this question in the same format:
+
+    Q: {question_text}
+    Answer:"""
+
+    result = call_model_chat_completions(
+        prompt=prompt,
+        system=system,
+        temperature=temperature,
+    )
+    return (result["text"] or "").strip()
+
+# better response system for when the problem is not math and not MCQ
+def DomainDirectAnswer(question: str, temperature: float = 0.0) -> str:
+    system = (
+        "You are a concise, reliable question-answering assistant. "
+        "Use any necessary reasoning internally, but reply with only the final answer, "
+        "as a short phrase or sentence, no explanation."
+    )
+
+    result = call_model_chat_completions(
+        prompt=question,
+        system=system,
+        temperature=temperature,
+    )
+    return (result["text"] or "").strip()
