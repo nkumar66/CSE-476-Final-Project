@@ -11,13 +11,15 @@ MODEL    = os.getenv("MODEL_NAME", "bens_model")
 #best way to get an accurate answer, though may not be very fast.
 
 #result, increasing maximum tokens increased model accuracy yes, but runtime started to take far too long, multiple hours
-#to create the dev data answers
+#to create the dev data answers, so changing it to modify token limits for how its called, so in chain of thought
+#it'll be called for max tokens of 512, and 128 in other scenarios
 
 def call_model_chat_completions(prompt: str,
                                 system: str = "You are a helpful assistant. Reply with only the final answer—no explanation.",
                                 model: str = MODEL,
                                 temperature: float = 0.0,
-                                timeout: int = 60) -> dict:
+                                timeout: int = 60,
+                                max_tokens: int = 128) -> dict:
     """
     Calls an OpenAI-style /v1/chat/completions endpoint and returns:
     { 'ok': bool, 'text': str or None, 'raw': dict or None, 'status': int, 'error': str or None, 'headers': dict }
@@ -34,7 +36,7 @@ def call_model_chat_completions(prompt: str,
             {"role": "user",   "content": prompt}
         ],
         "temperature": temperature,
-        "max_tokens": 128,
+        "max_tokens": max_tokens,
     }
 
     try:
@@ -115,6 +117,7 @@ def ChainOfThought(question, temperature=0.7):
         prompt=prompt,
         system=system,
         temperature=temperature,
+        max_tokens=512
     )
     return result["text"]
 
