@@ -63,35 +63,39 @@ def ClassifyQuestionType(question: str) -> str:
     #first prompt response from model should be question type
     system = (
         "You are a classifier. "
-        "Your job is to look at a question and decide if it is a math competition "
-        "style problem that requires calculations / equations, or something else."
+        "Your job is to look at a question and assign exactly one category. "
     )
 
-    prompt = f"""Classify the following question as one of two labels:
+    prompt = f"""Classify the following question as one of the following:
 
     - math
-    - other
+    - coding
+    - futurePrediction
+    - planning
+    - commonSense
+
 
     Rules:
-    - Respond with exactly one word: either math or other.
+    - Respond with exactly one word. 
     - 'math' means contest-style math, numeric answers, equations, geometry, counting, etc.
-    - Everything else is 'other'.
+    - 'coding' means programming questions, code interpretation, debugging, writing functions, etc.
+    - 'futurePlanning' means the question has the words "the event to be predicted:"
+    - 'planning' means the sentence starts with "I am" in a planning context.
+    - 'commonSense' means the question is really simple and straightforward, and not the other ones.
 
     Question:
     {question}
     """
-    print("TEST2")
+    #print("TEST2")
     result = call_model_chat_completions(
         prompt=prompt,
         system=system,
         temperature=0.0,
+        max_tokens=17
     )
-    print("TEST3")
+    #print("TEST3")
     raw = (result["text"] or "").strip().lower()
-
-    if "math" in raw:
-        return "math"
-    return "other"
+    return raw
 
 #chain of thought implementation, my idea to get chain of thoughts is to prompt the model to do the problem in steps, so that with each subproblem, 
 #forms a chain of thought
@@ -139,8 +143,8 @@ def extract_integer_final(text: str):
 #exists in the array and return that
 
 #changed to 1 because it would genuinely take like 2 hours if i wanted to run all the dev data, meaning it would take 
-#12 hours if i wanted to run the test data, so this algorithm won't work
-def SelfConsistency(question, attempts=1,temperature=0.7):
+#12 hours if i wanted to run the test data, if i have time then use it
+def SelfConsistency(question, attempts=3,temperature=0.7):
     finalAnswers = []
     frequency = {}
     for i in range(attempts):
@@ -193,6 +197,14 @@ def solveQuestion(question: dict) -> str:
     #based on that answer, route to appropriate inference time algorithm
     if problemType == "math":
         return SolveMath(text)
+    elif problemType == "coding":
+        return SolveCoding(text)
+    elif problemType == "futurePrediction":
+        return SolveFuturePrediction(text)
+    elif problemType == "planning":
+        return SolvePlanning(text)
+    elif problemType == "commonSense":
+        return DomainDirectAnswer(text)
     
     #if it looks like MCQ, solve with MCQ solver
     if MCQLikeQuestion(text):
@@ -281,5 +293,55 @@ def DomainDirectAnswer(question: str, temperature: float = 0.0) -> str:
         prompt=question,
         system=system,
         temperature=temperature,
+    )
+    return (result["text"] or "").strip()
+
+def SolveCoding(question: str, temperature: float) -> str:
+    
+    system = (
+        "You are a professional coding agent. "
+        "You analyze programs, debug code, and compute outputs. "
+        "Think like a programmer and return ONLY the final answer. "
+        "Do not explain. Do not include imports unless required."
+    )
+
+    result = call_model_chat_completions(
+        prompt=question,
+        system=system,
+        temperature=temperature,
+        max_tokens=256
+    )
+    return (result["text"] or "").strip()
+
+def SolveFuturePrediction(question: str, temperature: float) -> str:
+    
+    system = (
+        "You are a future prediction assistant. "
+        "Your job is to read a scenario and give the predicted outcome. "
+        "Output ONLY what the question asks for. No explanation."
+    )
+
+    result = call_model_chat_completions(
+        prompt=question,
+        system=system,
+        temperature=temperature,
+        max_tokens=128
+    )
+    return (result["text"] or "").strip()
+
+
+def SolvePlanning(question: str, temperature: float) -> str:
+    
+    system = (
+        "You are a planning and decision-making assistant. "
+        "You help determine the next steps, decisions, or actions. "
+        "Output only the final recommended answer with no explanation."
+    )
+
+    result = call_model_chat_completions(
+        prompt=question,
+        system=system,
+        temperature=temperature,
+        max_tokens=128
     )
     return (result["text"] or "").strip()
