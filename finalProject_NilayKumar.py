@@ -217,7 +217,7 @@ def solveQuestion(question: dict) -> str:
 #the solver was taking too long so I decided to implement a function to determine whether problems are shorter or longer
 #because we don't need the self consistency on easier math problems or chain of thought if it's really easy
 def SolveMath(question: str) -> str:
-    # Heuristic: short problems are likely easier
+    #short problems are likely easier
     if len(question) < 100:
         #faster path
         cotText = ChainOfThought(question, temperature=0.5)
@@ -227,7 +227,7 @@ def SolveMath(question: str) -> str:
             answer = DirectAnswer(question, temperature=0.0)
         return str(answer)
 
-    # Heavy path: self-consistency with fewer samples
+    #self-consistency if the question is a hard math problem
     answer = SelfConsistency(question, attempts=3, temperature=0.3)
     if answer is None:
         answer = DirectAnswer(question, temperature=0.0)
@@ -296,13 +296,13 @@ def DomainDirectAnswer(question: str, temperature: float = 0.0) -> str:
     )
     return (result["text"] or "").strip()
 
-def SolveCoding(question: str, temperature: float) -> str:
+def SolveCoding(question: str, temperature: float = 0.0) -> str:
     
     system = (
         "You are a professional coding agent. "
         "You analyze programs, debug code, and compute outputs. "
         "Think like a programmer and return ONLY the final answer. "
-        "Do not explain. Do not include imports unless required."
+        "Do not explain. Do not include imports unless required by the question."
     )
 
     result = call_model_chat_completions(
@@ -313,7 +313,7 @@ def SolveCoding(question: str, temperature: float) -> str:
     )
     return (result["text"] or "").strip()
 
-def SolveFuturePrediction(question: str, temperature: float) -> str:
+def SolveFuturePrediction(question: str, temperature: float = 0.0) -> str:
     
     system = (
         "You are a future prediction assistant. "
@@ -330,7 +330,7 @@ def SolveFuturePrediction(question: str, temperature: float) -> str:
     return (result["text"] or "").strip()
 
 
-def SolvePlanning(question: str, temperature: float) -> str:
+def SolvePlanning(question: str, temperature: float = 0.0) -> str:
     
     system = (
         "You are a planning and decision-making assistant. "

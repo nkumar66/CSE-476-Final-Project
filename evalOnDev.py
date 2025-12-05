@@ -22,7 +22,7 @@ def main() -> None:
     questions = load_dev(DEV_PATH)
 
     # If you want to test on a subset first, set MAX_QUESTIONS to e.g. 50 or 200
-    MAX_QUESTIONS = None  # or e.g. 200
+    MAX_QUESTIONS = 200  # or e.g. 200
     if MAX_QUESTIONS is not None:
         questions = questions[:MAX_QUESTIONS]
 
