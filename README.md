@@ -1,4 +1,4 @@
-# ***CSE476 Final Project***
+# **CSE476 Final Project**
 
 ## How to reproduce my results:
 ### Important Files:
