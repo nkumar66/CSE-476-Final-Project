@@ -12,4 +12,5 @@
 - Run generate_final_answers.py
 
 If it ever steps in the middle of execution, you can start it again and it'll continue where it left off
-
+If you ever want to double check any questions to see how well the answer came out, stop execution from the generate_final_answer.py and run random_check.py
+If you want to check how accurate your responses are on questions that are not from the test data, run evalOnDev.py
